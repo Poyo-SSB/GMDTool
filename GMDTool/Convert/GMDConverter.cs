@@ -23,7 +23,7 @@ namespace GMDTool.Convert
         {
             this.modelPack = modelPack;
             this.outputPath = outputPath;
-            this.textureFolderName = $@"\{Path.GetFileNameWithoutExtension(outputPath)}_Textures";
+            this.textureFolderName = $@"{Path.GetFileNameWithoutExtension(outputPath)}_Textures";
             this.textureFolder = Path.Combine(Path.GetDirectoryName(outputPath), this.textureFolderName);
         }
 
