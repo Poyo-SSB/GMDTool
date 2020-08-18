@@ -3,18 +3,34 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 16
 VisualStudioVersion = 16.0.29806.167
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "GMDTool", "GMDTool\GMDTool.csproj", "{8C40135D-63D2-4779-B5F8-68802C189AC4}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "GMDTool", "GMDTool\GMDTool.csproj", "{C821545B-97E4-48AE-B942-33741A20552E}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "GFDLibrary", "GFD-Studio\GFDLibrary\GFDLibrary.csproj", "{A41AC644-A107-4788-8E4F-E10CCA64F3B6}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
+		Debug|x64 = Debug|x64
 		Release|Any CPU = Release|Any CPU
+		Release|x64 = Release|x64
 	EndGlobalSection
 	GlobalSection(ProjectConfigurationPlatforms) = postSolution
-		{8C40135D-63D2-4779-B5F8-68802C189AC4}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{8C40135D-63D2-4779-B5F8-68802C189AC4}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{8C40135D-63D2-4779-B5F8-68802C189AC4}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{8C40135D-63D2-4779-B5F8-68802C189AC4}.Release|Any CPU.Build.0 = Release|Any CPU
+		{C821545B-97E4-48AE-B942-33741A20552E}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{C821545B-97E4-48AE-B942-33741A20552E}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{C821545B-97E4-48AE-B942-33741A20552E}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{C821545B-97E4-48AE-B942-33741A20552E}.Debug|x64.Build.0 = Debug|Any CPU
+		{C821545B-97E4-48AE-B942-33741A20552E}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{C821545B-97E4-48AE-B942-33741A20552E}.Release|Any CPU.Build.0 = Release|Any CPU
+		{C821545B-97E4-48AE-B942-33741A20552E}.Release|x64.ActiveCfg = Release|Any CPU
+		{C821545B-97E4-48AE-B942-33741A20552E}.Release|x64.Build.0 = Release|Any CPU
+		{A41AC644-A107-4788-8E4F-E10CCA64F3B6}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{A41AC644-A107-4788-8E4F-E10CCA64F3B6}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{A41AC644-A107-4788-8E4F-E10CCA64F3B6}.Debug|x64.ActiveCfg = Debug|x64
+		{A41AC644-A107-4788-8E4F-E10CCA64F3B6}.Debug|x64.Build.0 = Debug|x64
+		{A41AC644-A107-4788-8E4F-E10CCA64F3B6}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{A41AC644-A107-4788-8E4F-E10CCA64F3B6}.Release|Any CPU.Build.0 = Release|Any CPU
+		{A41AC644-A107-4788-8E4F-E10CCA64F3B6}.Release|x64.ActiveCfg = Release|x64
+		{A41AC644-A107-4788-8E4F-E10CCA64F3B6}.Release|x64.Build.0 = Release|x64
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

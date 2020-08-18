@@ -1,0 +1,3 @@
+[submodule "GFD-Studio"]
+	path = GFD-Studio
+	url = https://github.com/TGEnigma/GFD-Studio.git
