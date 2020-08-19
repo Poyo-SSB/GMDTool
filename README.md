@@ -1,6 +1,6 @@
 # GMDTool
 
-GMDTool is a command-line tool to convert Persona .GMD model files to Collada .DAE format. Loading of GMD files is handled by [TGEnigma](https://github.com/TGEnigma)'s [GFDLibrary](https://github.com/TGEnigma/GFD-Studio/tree/master/GFDLibrary); this tool simply builds a Collada file from the data provided.
+GMDTool is a command-line utility to convert Persona .GMD model files to Collada .DAE format. Loading of GMD files is handled by [TGEnigma](https://github.com/TGEnigma)'s [GFDLibrary](https://github.com/TGEnigma/GFD-Studio/tree/master/GFDLibrary); this tool simply builds a Collada file from the data provided.
 
 GMDTool exists as a stopgap until [GFD Studio](https://github.com/TGEnigma/GFD-Studio) is capable of exporting morph targets/blend shapes and has a command-line interface.
 
@@ -19,9 +19,10 @@ GMDTool <input file> <output file>
 
 ## Unsupported
 
-Currently unsupported elements in GMD files include:
+Currently unsupported elements of GMD files include:
 
  - Armatures
+ - Multiple texture channels
  - Lights
  - Cameras
  - Animations

@@ -59,7 +59,10 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="Convert\AssimpBone.cs" />
+    <Compile Include="Convert\AssimpVertexWeight.cs" />
     <Compile Include="Convert\GMDConverter.cs" />
+    <Compile Include="Convert\GMDConverterOptions.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>

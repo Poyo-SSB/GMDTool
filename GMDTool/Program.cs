@@ -6,10 +6,16 @@ namespace GMDTool
 {
     public class Program
     {
+        private const string issues_link = "https://github.com/Poyo-SSB/GMDTool/issues";
+
         private static void Main(string[] args)
         {
-            string input = String.Empty;
-            string output = String.Empty;
+            // TODO: options to disable lights, disable cameras, disable empty nodes
+
+            var options = new GMDConverterOptions();
+
+            string input;
+            string output;
 
             if (args.Length == 0)
             {
@@ -33,10 +39,11 @@ namespace GMDTool
                 PrintUsage();
                 return;
             }
-            
+
             try
             {
-                GMDConverter.Export(input, output);
+                var converter = new GMDConverter(input, output, options);
+                converter.Export();
             }
             catch (FileNotFoundException)
             {
@@ -47,6 +54,16 @@ namespace GMDTool
             {
                 Console.WriteLine("Error: Directory not found.");
                 PrintUsage();
+            }
+            catch (ArgumentException)
+            {
+                Console.WriteLine("Error: Invalid output path.");
+                PrintUsage();
+            }
+            catch (ApplicationException)
+            {
+                Console.WriteLine($"Error: Something has gone terribly, terribly wrong. Please file an issue at {issues_link}.");
+                throw;
             }
         }
 
