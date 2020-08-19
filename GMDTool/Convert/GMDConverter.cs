@@ -587,49 +587,41 @@ namespace GMDTool.Convert
 
                 skinElement.AppendChild(bindShapeMatrixElement);
 
-                // the following code is extremely silly, stolen from GFDLibrary. converts GFDLibrary data into an Assimp-y format.
+                // adapted from GMDLibrary; restructures the GMD vertex weight format into a more standard bone->vertex weight format
+                var boneMap = new Dictionary<int, Bone>();
 
-                var bones = new List<Bone>();
-
-                if (mesh.Flags.HasFlag(GeometryFlags.HasVertexWeights))
+                for (int j = 0; j < mesh.VertexWeights.Length; j++)
                 {
-                    var boneMap = new Dictionary<int, Bone>();
+                    var vertexWeight = mesh.VertexWeights[j];
 
-                    for (int j = 0; j < mesh.VertexWeights.Length; j++)
+                    for (int k = 0; k < 4; k++)
                     {
-                        var vertexWeight = mesh.VertexWeights[j];
-
-                        for (int k = 0; k < 4; k++)
+                        float boneWeight = vertexWeight.Weights[k];
+                        if (boneWeight == 0f)
                         {
-                            float boneWeight = vertexWeight.Weights[k];
-                            if (boneWeight == 0f)
-                            {
-                                continue;
-                            }
+                            continue;
+                        }
 
-                            byte boneIndex = vertexWeight.Indices[k];
-                            ushort nodeIndex = this.modelPack.Model.Bones[boneIndex].NodeIndex;
+                        byte boneIndex = vertexWeight.Indices[k];
+                        ushort nodeIndex = this.modelPack.Model.Bones[boneIndex].NodeIndex;
 
-                            if (!boneMap.ContainsKey(nodeIndex))
-                            {
-                                var aiBone = new Bone();
-                                var boneNode = this.modelPack.Model.GetNode(nodeIndex);
+                        if (!boneMap.ContainsKey(nodeIndex))
+                        {
+                            var bone = new Bone();
+                            var boneNode = this.modelPack.Model.GetNode(nodeIndex);
 
-                                aiBone.VertexWeights.Add(new VertexWeight(j, boneWeight));
+                            bone.VertexWeights.Add(new VertexWeight(j, boneWeight));
 
-                                boneMap[nodeIndex] = aiBone;
-                            }
-                            else
-                            {
-                                boneMap[nodeIndex].VertexWeights.Add(new VertexWeight(j, boneWeight));
-                            }
+                            boneMap[nodeIndex] = bone;
+                        }
+                        else
+                        {
+                            boneMap[nodeIndex].VertexWeights.Add(new VertexWeight(j, boneWeight));
                         }
                     }
-
-                    bones.AddRange(boneMap.Values);
                 }
-                
-                // end silly code
+
+                var bones = boneMap.Values.ToList();
 
                 skinElement.AppendChild(this.CreateSkinJointsSourceXmlElement(mesh, meshId, out List<Node> joints));
                 skinElement.AppendChild(this.CreateSkinBindPosesSourceXmlElement(meshNode, mesh, meshId, out List<float> bindPoses));
@@ -678,51 +670,45 @@ namespace GMDTool.Convert
 
                 var vElementValues = new List<int>();
 
-                // the following code is also extremely silly. It takes the Assimp-y format created above and turns it into Collada.
-
-                var num_influences = Enumerable.Repeat(0, mesh.VertexCount).ToList();
-                for (int j = 0; j < bones.Count; ++j)
+                // adapted from Assimp; magically produces proper Collada weights. somehow
+                var influences = Enumerable.Repeat(0, mesh.VertexCount).ToList();
+                for (int j = 0; j < bones.Count; j++)
                 {
                     for (int k = 0; k < bones[j].VertexWeights.Count; ++k)
                     {
-                        ++num_influences[bones[j].VertexWeights[k].VertexId];
+                        influences[bones[j].VertexWeights[k].VertexId]++;
                     }
                 }
 
-                int joint_weight_indices_length = 0;
-                var accum_influences = new List<int>();
-                for (int j = 0; j < num_influences.Count; ++j)
+                int jointWeightIndicesLength = 0;
+                var accumInfluences = new List<int>();
+                for (int j = 0; j < influences.Count; j++)
                 {
-                    accum_influences.Add(joint_weight_indices_length);
-                    joint_weight_indices_length += num_influences[j];
+                    accumInfluences.Add(jointWeightIndicesLength);
+                    jointWeightIndicesLength += influences[j];
                 }
 
-                int weight_index = 0;
-                var joint_weight_indices = Enumerable.Repeat(-1, 2 * joint_weight_indices_length).ToList();
-                for (int j = 0; j < bones.Count; ++j)
+                int weightIndex = 0;
+                var jointWeightIndices = Enumerable.Repeat(-1, 2 * jointWeightIndicesLength).ToList();
+                for (int j = 0; j < bones.Count; j++)
                 {
                     for (int k = 0; k < bones[j].VertexWeights.Count; ++k)
                     {
-                        int vId = bones[j].VertexWeights[k].VertexId;
-                        for (int l = 0; l < num_influences[vId]; ++l)
+                        int vertexId = bones[j].VertexWeights[k].VertexId;
+                        for (int l = 0; l < influences[vertexId]; l++)
                         {
-                            if (joint_weight_indices[2 * (accum_influences[vId] + l)] == -1)
+                            if (jointWeightIndices[2 * (accumInfluences[vertexId] + l)] == -1)
                             {
-                                joint_weight_indices[2 * (accum_influences[vId] + l)] = j;
-                                joint_weight_indices[(2 * (accum_influences[vId] + l)) + 1] = weight_index;
+                                jointWeightIndices[2 * (accumInfluences[vertexId] + l)] = j;
+                                jointWeightIndices[(2 * (accumInfluences[vertexId] + l)) + 1] = weightIndex;
                                 break;
                             }
                         }
-                        ++weight_index;
+                        weightIndex++;
                     }
                 }
 
-                for (int j = 0; j < joint_weight_indices.Count; ++j)
-                {
-                    vElementValues.Add(joint_weight_indices[j]);
-                }
-
-                // end silly code.
+                vElementValues.AddRange(jointWeightIndices);
 
                 vElement.AppendChild(this.document.CreateTextNode(String.Join(" ", vElementValues)));
 
