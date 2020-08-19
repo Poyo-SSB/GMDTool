@@ -42,29 +42,38 @@ namespace GMDTool
 
             try
             {
+                Console.WriteLine($"input: {input}");
+                Console.WriteLine($"output: {output}");
                 var converter = new GMDConverter(input, output, options);
                 converter.Export();
             }
             catch (FileNotFoundException)
             {
-                Console.WriteLine("Error: File not found.");
+                PrintError("File not found.");
                 PrintUsage();
             }
             catch (DirectoryNotFoundException)
             {
-                Console.WriteLine("Error: Directory not found.");
+                PrintError("Directory not found.");
                 PrintUsage();
             }
             catch (ArgumentException)
             {
-                Console.WriteLine("Error: Invalid output path.");
+                PrintError("Invalid output path.");
                 PrintUsage();
             }
             catch (ApplicationException)
             {
-                Console.WriteLine($"Error: Something has gone terribly, terribly wrong. Please file an issue at {issues_link}.");
+                PrintError($"Something has gone terribly, terribly wrong. Please file an issue at {issues_link}.");
                 throw;
             }
+        }
+        
+        private static void PrintError(string error)
+        {
+            Console.ForegroundColor = ConsoleColor.Red;
+            Console.WriteLine($"Error: {error}");
+            Console.ResetColor();
         }
 
         private static void PrintUsage() => Console.WriteLine($"Usage: GMDTool <input file> <output file>");

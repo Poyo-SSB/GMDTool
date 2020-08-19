@@ -15,9 +15,12 @@ namespace GMDTool.Convert
         private readonly GMDConverterOptions options;
 
         private readonly ModelPack modelPack;
+
         private readonly string outputPath;
         private readonly string textureFolderName;
         private readonly string textureFolder;
+
+        private bool blenderOutputNecessary = true;
 
         private XmlDocument document;
 
@@ -37,9 +40,18 @@ namespace GMDTool.Convert
         {
             this.GenerateXml(false);
 
-            if (this.options.EnableBlenderCompatibilityOutput)
+            if (this.blenderOutputNecessary)
             {
-                this.GenerateXml(true);
+                if (this.options.EnableBlenderCompatibilityOutput)
+                {
+                    this.GenerateXml(true);
+                }
+            }
+            else
+            {
+                Console.ForegroundColor = ConsoleColor.Cyan;
+                Console.WriteLine("No meshes have both vertex weights and morph targets; skipping Blender compatibility output.");
+                Console.ResetColor();
             }
 
             this.ExportTextures();
@@ -527,6 +539,11 @@ namespace GMDTool.Convert
         private XmlNode CreateLibraryControllersXmlElement(bool blenderMode)
         {
             var libraryControllersElement = this.document.CreateElement("library_controllers");
+
+            if (!this.meshes.Any(x => x.Flags.HasFlag(GeometryFlags.HasVertexWeights) && x.Flags.HasFlag(GeometryFlags.HasMorphTargets)))
+            {
+                this.blenderOutputNecessary = false;
+            }
 
             for (int i = 0; i < this.meshes.Count; i++)
             {
