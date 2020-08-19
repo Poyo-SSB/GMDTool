@@ -83,12 +83,12 @@ namespace GMDTool
 
         private static void PrintUsage()
         {
-            Console.WriteLine($"Usage: GMDTool [flags] <input file> <output file>");
+            Console.WriteLine($"Usage: GMDTool [flags] <input file> [output file]");
             Console.WriteLine($"Flags:");
-            Console.WriteLine($"    -b, --blender-output    Enables Blender compatibility output. See GitHub readme for details.");
-            Console.WriteLine($"    -i, --ignore-empty      Ignores empty nodes.");
             Console.WriteLine($"    --help                  Displays this usage screen.");
             Console.WriteLine($"    --version               Prints the version of this tool.");
+            Console.WriteLine($"    -b, --blender-output    Enables Blender compatibility output. See GitHub readme for details.");
+            Console.WriteLine($"    -i, --ignore-empty      Ignores empty nodes.");
         }
     }
 }
