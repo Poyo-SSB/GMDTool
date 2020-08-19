@@ -59,6 +59,8 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="Convert\Bone.cs" />
+    <Compile Include="Convert\VertexWeight.cs" />
     <Compile Include="Convert\GMDConverter.cs" />
     <Compile Include="Convert\GMDConverterOptions.cs" />
     <Compile Include="Program.cs" />

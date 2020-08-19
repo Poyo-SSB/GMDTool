@@ -40,18 +40,18 @@ namespace GMDTool.Convert
         {
             this.GenerateXml(false);
 
-            if (this.blenderOutputNecessary)
+            if (this.options.EnableBlenderCompatibilityOutput)
             {
-                if (this.options.EnableBlenderCompatibilityOutput)
+                if (this.blenderOutputNecessary)
                 {
                     this.GenerateXml(true);
                 }
-            }
-            else
-            {
-                Console.ForegroundColor = ConsoleColor.Cyan;
-                Console.WriteLine("No meshes have both vertex weights and morph targets; skipping Blender compatibility output.");
-                Console.ResetColor();
+                else
+                {
+                    Console.ForegroundColor = ConsoleColor.Cyan;
+                    Console.WriteLine("No meshes have both vertex weights and morph targets; skipping Blender compatibility output.");
+                    Console.ResetColor();
+                }
             }
 
             this.ExportTextures();
@@ -587,9 +587,53 @@ namespace GMDTool.Convert
 
                 skinElement.AppendChild(bindShapeMatrixElement);
 
+                // the following code is extremely silly, stolen from GFDLibrary. converts GFDLibrary data into an Assimp-y format.
+
+                var bones = new List<Bone>();
+
+                if (mesh.Flags.HasFlag(GeometryFlags.HasVertexWeights))
+                {
+                    var boneMap = new Dictionary<int, Bone>();
+
+                    for (int j = 0; j < mesh.VertexWeights.Length; j++)
+                    {
+                        var vertexWeight = mesh.VertexWeights[j];
+
+                        for (int k = 0; k < 4; k++)
+                        {
+                            float boneWeight = vertexWeight.Weights[k];
+                            if (boneWeight == 0f)
+                            {
+                                continue;
+                            }
+
+                            byte boneIndex = vertexWeight.Indices[k];
+                            ushort nodeIndex = this.modelPack.Model.Bones[boneIndex].NodeIndex;
+
+                            if (!boneMap.ContainsKey(nodeIndex))
+                            {
+                                var aiBone = new Bone();
+                                var boneNode = this.modelPack.Model.GetNode(nodeIndex);
+
+                                aiBone.VertexWeights.Add(new VertexWeight(j, boneWeight));
+
+                                boneMap[nodeIndex] = aiBone;
+                            }
+                            else
+                            {
+                                boneMap[nodeIndex].VertexWeights.Add(new VertexWeight(j, boneWeight));
+                            }
+                        }
+                    }
+
+                    bones.AddRange(boneMap.Values);
+                }
+                
+                // end silly code
+
                 skinElement.AppendChild(this.CreateSkinJointsSourceXmlElement(mesh, meshId, out List<Node> joints));
-                skinElement.AppendChild(this.CreateSkinBindPosesSourceXmlElement(meshNode, mesh, meshId));
-                skinElement.AppendChild(this.CreateSkinWeightsSourceXmlElement(mesh, meshId));
+                skinElement.AppendChild(this.CreateSkinBindPosesSourceXmlElement(meshNode, mesh, meshId, out List<float> bindPoses));
+                skinElement.AppendChild(this.CreateSkinWeightsSourceXmlElement(bones, meshId));
 
                 var jointsElement = this.document.CreateElement("joints");
 
@@ -634,8 +678,53 @@ namespace GMDTool.Convert
 
                 var vElementValues = new List<int>();
 
+                // the following code is also extremely silly. It takes the Assimp-y format created above and turns it into Collada.
+
+                var num_influences = Enumerable.Repeat(0, mesh.VertexCount).ToList();
+                for (int j = 0; j < bones.Count; ++j)
+                {
+                    for (int k = 0; k < bones[j].VertexWeights.Count; ++k)
+                    {
+                        ++num_influences[bones[j].VertexWeights[k].VertexId];
+                    }
+                }
+
+                int joint_weight_indices_length = 0;
+                var accum_influences = new List<int>();
+                for (int j = 0; j < num_influences.Count; ++j)
+                {
+                    accum_influences.Add(joint_weight_indices_length);
+                    joint_weight_indices_length += num_influences[j];
+                }
+
+                int weight_index = 0;
+                var joint_weight_indices = Enumerable.Repeat(-1, 2 * joint_weight_indices_length).ToList();
+                for (int j = 0; j < bones.Count; ++j)
+                {
+                    for (int k = 0; k < bones[j].VertexWeights.Count; ++k)
+                    {
+                        int vId = bones[j].VertexWeights[k].VertexId;
+                        for (int l = 0; l < num_influences[vId]; ++l)
+                        {
+                            if (joint_weight_indices[2 * (accum_influences[vId] + l)] == -1)
+                            {
+                                joint_weight_indices[2 * (accum_influences[vId] + l)] = j;
+                                joint_weight_indices[(2 * (accum_influences[vId] + l)) + 1] = weight_index;
+                                break;
+                            }
+                        }
+                        ++weight_index;
+                    }
+                }
+
+                for (int j = 0; j < joint_weight_indices.Count; ++j)
+                {
+                    vElementValues.Add(joint_weight_indices[j]);
+                }
+
+                // end silly code.
+
                 vElement.AppendChild(this.document.CreateTextNode(String.Join(" ", vElementValues)));
-                // TODO: these are definitely wrong—figure out where the proper values come from
 
                 vertexWeightsElement.AppendChild(vElement);
 
@@ -750,7 +839,7 @@ namespace GMDTool.Convert
             return sourceElement;
         }
 
-        private XmlNode CreateSkinBindPosesSourceXmlElement(Node meshNode, Mesh mesh, string meshId)
+        private XmlNode CreateSkinBindPosesSourceXmlElement(Node meshNode, Mesh mesh, string meshId, out List<float> bindPoses)
         {
             var sourceElement = this.document.CreateElement("source");
             sourceElement.SetAttribute("id", meshId + "-skin-bind-poses");
@@ -759,7 +848,7 @@ namespace GMDTool.Convert
             var floatArrayElement = this.document.CreateElement("float_array");
             floatArrayElement.SetAttribute("id", meshId + "-skin-bind-poses-array");
 
-            var floatArrayElementValues = new List<Node>();
+            var bindPosesNodes = new List<Node>();
 
             for (int i = 0; i < mesh.VertexWeights.Length; i++)
             {
@@ -778,31 +867,31 @@ namespace GMDTool.Convert
 
                     var boneNode = this.modelPack.Model.GetNode(nodeIndex);
 
-                    if (!floatArrayElementValues.Contains(boneNode))
+                    if (!bindPosesNodes.Contains(boneNode))
                     {
-                        floatArrayElementValues.Add(boneNode);
+                        bindPosesNodes.Add(boneNode);
                     }
                 }
             }
 
-            floatArrayElement.SetAttribute("count", (floatArrayElementValues.Count * 16).ToString()); // 4x4 matrix contains 16 values. obvs.
+            floatArrayElement.SetAttribute("count", (bindPosesNodes.Count * 16).ToString()); // 4x4 matrix contains 16 values. obvs.
 
-            string floatArrayElementText = String.Join(" ", floatArrayElementValues.Select(x =>
+            bindPoses = bindPosesNodes.SelectMany(x =>
             {
                 // literally no idea what this does or why but it works
                 Matrix4x4.Invert(meshNode.WorldTransform, out Matrix4x4 invertedMeshNodeWorldTransform);
                 Matrix4x4.Invert(x.WorldTransform * invertedMeshNodeWorldTransform, out Matrix4x4 offsetMatrix);
-                return this.GenerateMatrixString(offsetMatrix);
-            }));
+                return this.GenerateMatrixArray(offsetMatrix);
+            }).ToList();
 
-            floatArrayElement.AppendChild(this.document.CreateTextNode(floatArrayElementText));
+            floatArrayElement.AppendChild(this.document.CreateTextNode(String.Join(" ", bindPoses)));
 
             sourceElement.AppendChild(floatArrayElement);
 
             var techniqueCommonElement = this.document.CreateElement("technique_common");
 
             var accessorElement = this.document.CreateElement("accessor");
-            accessorElement.SetAttribute("count", floatArrayElementValues.Count.ToString());
+            accessorElement.SetAttribute("count", bindPosesNodes.Count.ToString());
             accessorElement.SetAttribute("offset", "0");
             accessorElement.SetAttribute("source", "#" + meshId + "-skin-bind-poses-array");
             accessorElement.SetAttribute("stride", "16");
@@ -820,7 +909,7 @@ namespace GMDTool.Convert
             return sourceElement;
         }
 
-        private XmlNode CreateSkinWeightsSourceXmlElement(Mesh mesh, string meshId)
+        private XmlNode CreateSkinWeightsSourceXmlElement( List<Bone> bones, string meshId)
         {
             var sourceElement = this.document.CreateElement("source");
             sourceElement.SetAttribute("id", meshId + "-skin-weights");
@@ -831,19 +920,11 @@ namespace GMDTool.Convert
 
             var floatArrayElementValues = new List<float>();
 
-            for (int i = 0; i < mesh.VertexWeights.Length; i++)
+            for (int i = 0; i < bones.Count; ++i)
             {
-                var vertexWeight = mesh.VertexWeights[i];
-
-                for (int j = 0; j < 4; j++)
+                for (int j = 0; j < bones[i].VertexWeights.Count; ++j)
                 {
-                    float boneWeight = vertexWeight.Weights[j];
-                    if (boneWeight == 0)
-                    {
-                        continue;
-                    }
-
-                    floatArrayElementValues.Add(boneWeight);
+                    floatArrayElementValues.Add(bones[i].VertexWeights[j].Weight);
                 }
             }
 
@@ -986,7 +1067,7 @@ namespace GMDTool.Convert
                 nodeElement.SetAttribute("sid", node.Name); // not sure when this is unnecessary, so we'll always include it. doesn't seem to cause problems
                 nodeElement.SetAttribute("name", node.Name);
 
-                Bone nodeBone = null;
+                GFDLibrary.Models.Bone nodeBone = null;
                 foreach (var bone in bones)
                 {
                     if (node == this.modelPack.Model.GetNode(bone.NodeIndex))
@@ -1160,6 +1241,17 @@ namespace GMDTool.Convert
                 $"{matrix.M12} {matrix.M22} {matrix.M32} {matrix.M42} " +
                 $"{matrix.M13} {matrix.M23} {matrix.M33} {matrix.M43} " +
                 $"{matrix.M14} {matrix.M24} {matrix.M34} {matrix.M44}";
+        }
+
+        private float[] GenerateMatrixArray(Matrix4x4 matrix)
+        {
+            return new float[]
+            {
+                matrix.M11, matrix.M21, matrix.M31, matrix.M41,
+                matrix.M12, matrix.M22, matrix.M32, matrix.M42,
+                matrix.M13, matrix.M23, matrix.M33, matrix.M43,
+                matrix.M14, matrix.M24, matrix.M34, matrix.M44
+            };
         }
     }
 }

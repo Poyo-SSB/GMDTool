@@ -14,14 +14,13 @@ GMDTool has been tested on models from the following games using the GMD format:
 ## Usage
 
 ```cmd
-GMDTool <input file> <output file>
+GMDTool <input file> [output file]
 ```
 
 ## Unsupported
 
 Currently unsupported elements of GMD files include:
 
- - Armatures
  - Multiple texture channels
  - Lights
  - Cameras

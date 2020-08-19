@@ -19,7 +19,7 @@ namespace GMDTool
 
             if (args.Length == 0)
             {
-                Console.WriteLine("Error: No input file provided.");
+                PrintError("No input file provided.");
                 PrintUsage();
                 return;
             }
@@ -35,7 +35,7 @@ namespace GMDTool
             }
             else
             {
-                Console.WriteLine("Error: Too many arguments.");
+                PrintError("Too many arguments.");
                 PrintUsage();
                 return;
             }
