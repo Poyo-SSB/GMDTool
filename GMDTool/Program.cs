@@ -1,4 +1,5 @@
-﻿using GMDTool.Convert;
+﻿using CommandLine;
+using GMDTool.Convert;
 using System;
 using System.IO;
 
@@ -6,67 +7,71 @@ namespace GMDTool
 {
     public class Program
     {
+        private const string version = "v1.0.0";
+
         private const string issues_link = "https://github.com/Poyo-SSB/GMDTool/issues";
 
         private static void Main(string[] args)
         {
-            // TODO: options to disable lights, disable cameras, disable empty nodes
+            new Parser(config => config.HelpWriter = null).ParseArguments<GMDConverterOptions>(args)
+                .WithParsed(o =>
+                {
+                    if (o.Output == null)
+                    {
+                        o.Output = Path.Combine(Directory.GetCurrentDirectory(), Path.GetFileNameWithoutExtension(o.Input) + ".dae");
+                    }
 
-            var options = new GMDConverterOptions();
-
-            string input;
-            string output;
-
-            if (args.Length == 0)
-            {
-                PrintError("No input file provided.");
-                PrintUsage();
-                return;
-            }
-            else if (args.Length == 1)
-            {
-                input = args[0];
-                output = Path.Combine(Directory.GetCurrentDirectory(), Path.GetFileNameWithoutExtension(args[0]) + ".dae");
-            }
-            else if (args.Length == 2)
-            {
-                input = args[0];
-                output = args[1];
-            }
-            else
-            {
-                PrintError("Too many arguments.");
-                PrintUsage();
-                return;
-            }
-
-            try
-            {
-                Console.WriteLine($"input: {input}");
-                Console.WriteLine($"output: {output}");
-                var converter = new GMDConverter(input, output, options);
-                converter.Export();
-            }
-            catch (FileNotFoundException)
-            {
-                PrintError("File not found.");
-                PrintUsage();
-            }
-            catch (DirectoryNotFoundException)
-            {
-                PrintError("Directory not found.");
-                PrintUsage();
-            }
-            catch (ArgumentException)
-            {
-                PrintError("Invalid output path.");
-                PrintUsage();
-            }
-            catch (ApplicationException)
-            {
-                PrintError($"Something has gone terribly, terribly wrong. Please file an issue at {issues_link}.");
-                throw;
-            }
+                    try
+                    {
+                        var converter = new GMDConverter(o);
+                        converter.Export();
+                    }
+                    catch (FileNotFoundException)
+                    {
+                        PrintError("File not found.");
+                        PrintUsage();
+                    }
+                    catch (DirectoryNotFoundException)
+                    {
+                        PrintError("Directory not found.");
+                        PrintUsage();
+                    }
+                    catch (ArgumentException)
+                    {
+                        PrintError("Invalid output path.");
+                        PrintUsage();
+                        throw;
+                    }
+                    catch (ApplicationException)
+                    {
+                        PrintError($"Something has gone terribly, terribly wrong. Please file an issue at {issues_link}.");
+                        throw;
+                    }
+                })
+                .WithNotParsed(e =>
+                {
+                    if (e.IsHelp())
+                    {
+                        PrintUsage();
+                    }
+                    else if (e.IsVersion())
+                    {
+                        Console.WriteLine(version);
+                    }
+                    else
+                    {
+                        foreach (var error in e)
+                        {
+                            switch (error.Tag)
+                            {
+                                case ErrorType.MissingRequiredOptionError:
+                                    PrintError("Input file not provided.");
+                                    break;
+                            }
+                            PrintUsage();
+                        }
+                    }
+                });
         }
         
         private static void PrintError(string error)
@@ -76,6 +81,14 @@ namespace GMDTool
             Console.ResetColor();
         }
 
-        private static void PrintUsage() => Console.WriteLine($"Usage: GMDTool <input file> <output file>");
+        private static void PrintUsage()
+        {
+            Console.WriteLine($"Usage: GMDTool [flags] <input file> <output file>");
+            Console.WriteLine($"Flags:");
+            Console.WriteLine($"    -b, --blender-output    Enables Blender compatibility output. See GitHub readme for details.");
+            Console.WriteLine($"    -i, --ignore-empty      Ignores empty nodes.");
+            Console.WriteLine($"    --help                  Displays this usage screen.");
+            Console.WriteLine($"    --version               Prints the version of this tool.");
+        }
     }
 }

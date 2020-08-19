@@ -1,6 +1,7 @@
 ﻿using GFDLibrary;
 using GFDLibrary.Materials;
 using GFDLibrary.Models;
+using GFDLibrary.Textures;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -26,14 +27,17 @@ namespace GMDTool.Convert
 
         private List<Mesh> meshes;
 
-        public GMDConverter(string input, string outputPath, GMDConverterOptions options)
+        public GMDConverter(GMDConverterOptions options)
         {
             this.options = options;
 
-            this.modelPack = Resource.Load<ModelPack>(input);
-            this.outputPath = outputPath;
-            this.textureFolderName = $@"{Path.GetFileNameWithoutExtension(outputPath)}_Textures";
-            this.textureFolder = Path.Combine(Path.GetDirectoryName(outputPath), this.textureFolderName);
+            this.modelPack = Resource.Load<ModelPack>(options.Input);
+            this.outputPath = options.Output;
+            this.textureFolderName = $@"{Path.GetFileNameWithoutExtension(options.Output)}_Textures";
+            this.textureFolder = Path.Combine(Path.GetDirectoryName(options.Output), this.textureFolderName);
+
+            Console.WriteLine($"input: {options.Input}");
+            Console.WriteLine($"output: {options.Output}");
         }
 
         public void Export()
@@ -588,7 +592,7 @@ namespace GMDTool.Convert
                 skinElement.AppendChild(bindShapeMatrixElement);
 
                 // adapted from GMDLibrary; restructures the GMD vertex weight format into a more standard bone->vertex weight format
-                var boneMap = new Dictionary<int, Bone>();
+                var boneMap = new Dictionary<int, AssimpBone>();
 
                 for (int j = 0; j < mesh.VertexWeights.Length; j++)
                 {
@@ -607,16 +611,16 @@ namespace GMDTool.Convert
 
                         if (!boneMap.ContainsKey(nodeIndex))
                         {
-                            var bone = new Bone();
+                            var bone = new AssimpBone();
                             var boneNode = this.modelPack.Model.GetNode(nodeIndex);
 
-                            bone.VertexWeights.Add(new VertexWeight(j, boneWeight));
+                            bone.VertexWeights.Add(new AssimpVertexWeight(j, boneWeight));
 
                             boneMap[nodeIndex] = bone;
                         }
                         else
                         {
-                            boneMap[nodeIndex].VertexWeights.Add(new VertexWeight(j, boneWeight));
+                            boneMap[nodeIndex].VertexWeights.Add(new AssimpVertexWeight(j, boneWeight));
                         }
                     }
                 }
@@ -895,7 +899,7 @@ namespace GMDTool.Convert
             return sourceElement;
         }
 
-        private XmlNode CreateSkinWeightsSourceXmlElement( List<Bone> bones, string meshId)
+        private XmlNode CreateSkinWeightsSourceXmlElement( List<AssimpBone> bones, string meshId)
         {
             var sourceElement = this.document.CreateElement("source");
             sourceElement.SetAttribute("id", meshId + "-skin-weights");
@@ -1053,13 +1057,16 @@ namespace GMDTool.Convert
                 nodeElement.SetAttribute("sid", node.Name); // not sure when this is unnecessary, so we'll always include it. doesn't seem to cause problems
                 nodeElement.SetAttribute("name", node.Name);
 
-                GFDLibrary.Models.Bone nodeBone = null;
-                foreach (var bone in bones)
+                Bone nodeBone = null;
+                if (bones != null)
                 {
-                    if (node == this.modelPack.Model.GetNode(bone.NodeIndex))
+                    foreach (var bone in bones)
                     {
-                        nodeBone = bone;
-                        break;
+                        if (node == this.modelPack.Model.GetNode(bone.NodeIndex))
+                        {
+                            nodeBone = bone;
+                            break;
+                        }
                     }
                 }
 
@@ -1096,8 +1103,12 @@ namespace GMDTool.Convert
                                 nodeElement.AppendChild(this.CreateInstanceGeometryXmlElement(mesh));
                             }
                             break;
+                        case NodeAttachmentType.Morph:
+                            // morph attachment specify the default weights for a morph target
+                            // i don't want to deal with these, so they're all set to zero. that'll be fine, right? right???
+                            break;
                         default:
-                            // throw new NotImplementedException();
+                            //throw new NotImplementedException();
                             break;
                     }
                 }
@@ -1214,7 +1225,7 @@ namespace GMDTool.Convert
         {
             Directory.CreateDirectory(this.textureFolder);
 
-            foreach (GFDLibrary.Textures.Texture texture in this.modelPack.Textures.Textures)
+            foreach (Texture texture in this.modelPack.Textures.Textures)
             {
                 File.WriteAllBytes(Path.Combine(this.textureFolder, texture.Name), texture.Data);
             }

@@ -11,10 +11,12 @@ GMDTool has been tested on models from the following games using the GMD format:
 - [ ] Persona 3: Dancing in Moonlight/Persona 5: Dancing in Starlight
 - [ ] Persona 5 Royal
 
+GMDTool will probably work on .GFS environment files, but they are currently not supported.
+
 ## Usage
 
 ```cmd
-GMDTool <input file> [output file]
+GMDTool [flags] <input file> [output file]
 ```
 
 ## Unsupported
