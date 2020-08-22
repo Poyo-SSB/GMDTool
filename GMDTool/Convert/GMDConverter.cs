@@ -1052,17 +1052,6 @@ namespace GMDTool.Convert
 
             foreach (var node in parent.Children)
             {
-                if (this.options.IgnoreEmptyNodes && !node.HasAttachments && !node.HasChildren)
-                {
-                    // useless garbage trash boy node
-                    continue;
-                }
-
-                var nodeElement = this.document.CreateElement("node");
-                nodeElement.SetAttribute("id", node.Name);
-                nodeElement.SetAttribute("sid", node.Name); // not sure when this is unnecessary, so we'll always include it. doesn't seem to cause problems
-                nodeElement.SetAttribute("name", node.Name);
-
                 Bone nodeBone = null;
                 if (bones != null)
                 {
@@ -1075,6 +1064,17 @@ namespace GMDTool.Convert
                         }
                     }
                 }
+
+                if (this.options.IgnoreEmptyNodes && !node.HasAttachments && !node.HasChildren && nodeBone == null)
+                {
+                    // useless garbage trash boy node
+                    continue;
+                }
+
+                var nodeElement = this.document.CreateElement("node");
+                nodeElement.SetAttribute("id", node.Name);
+                nodeElement.SetAttribute("sid", node.Name); // not sure when this is unnecessary, so we'll always include it. doesn't seem to cause problems
+                nodeElement.SetAttribute("name", node.Name);
 
                 if (nodeBone == null)
                 {
