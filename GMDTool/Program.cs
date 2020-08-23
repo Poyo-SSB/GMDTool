@@ -7,7 +7,7 @@ namespace GMDTool
 {
     public class Program
     {
-        private const string version = "v1.1.0";
+        private const string version = "v1.2.0";
 
         private const string issues_link = "https://github.com/Poyo-SSB/GMDTool/issues";
 
