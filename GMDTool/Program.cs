@@ -7,7 +7,7 @@ namespace GMDTool
 {
     public class Program
     {
-        private const string version = "v1.1.0";
+        private const string version = "v1.2.0";
 
         private const string issues_link = "https://github.com/Poyo-SSB/GMDTool/issues";
 
@@ -42,9 +42,9 @@ namespace GMDTool
                         PrintUsage();
                         throw;
                     }
-                    catch (ApplicationException)
+                    catch (ApplicationException e)
                     {
-                        PrintError($"Something has gone terribly, terribly wrong. Please file an issue at {issues_link}.");
+                        PrintError($"Something has gone terribly, terribly wrong. Please file an issue at {issues_link}, including the input GMD file that caused the error.", e.Message);
                         throw;
                     }
                 })
@@ -74,10 +74,16 @@ namespace GMDTool
                 });
         }
         
-        private static void PrintError(string error)
+        private static void PrintError(string error, string message = null)
         {
             Console.ForegroundColor = ConsoleColor.Red;
             Console.WriteLine($"Error: {error}");
+
+            if (message != null)
+            {
+                Console.WriteLine($"Message: {message}");
+            }
+
             Console.ResetColor();
         }
 

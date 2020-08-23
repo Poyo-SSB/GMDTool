@@ -21,9 +21,20 @@ namespace GMDTool.Convert
         private readonly string textureFolderName;
         private readonly string textureFolder;
 
-        private bool blenderOutputNecessary = true;
+        // whether the converter is currently running in Blender-compatibility mode.
+        // set after the first (non-Blender) run through if the Blender output option is enabled, before the second run through.
+        private bool blenderMode;
+
+        // on the first (non-Blender) run through of the model, there are various points where the converter can realize that Blender output is necessary, and will mark it here.
+        private bool blenderOutputNecessary = false;
 
         private XmlDocument document;
+        private XmlElement libraryImagesElement;
+        private XmlElement libraryEffectsElement;
+        private XmlElement libraryMaterialsElement;
+        private XmlElement libraryGeometriesElement;
+        private XmlElement libraryControllersElement;
+        private XmlElement visualSceneElement;
 
         private List<Mesh> meshes;
 
@@ -42,18 +53,19 @@ namespace GMDTool.Convert
 
         public void Export()
         {
-            this.GenerateXml(false);
+            this.GenerateXml();
 
             if (this.options.EnableBlenderCompatibilityOutput)
             {
                 if (this.blenderOutputNecessary)
                 {
-                    this.GenerateXml(true);
+                    this.blenderMode = true;
+                    this.GenerateXml();
                 }
                 else
                 {
                     Console.ForegroundColor = ConsoleColor.Cyan;
-                    Console.WriteLine("No meshes have both vertex weights and morph targets; skipping Blender compatibility output.");
+                    Console.WriteLine("Skipping unnecessary Blender compatibility output.");
                     Console.ResetColor();
                 }
             }
@@ -61,7 +73,7 @@ namespace GMDTool.Convert
             this.ExportTextures();
         }
 
-        private void GenerateXml(bool blenderMode)
+        private void GenerateXml()
         {
             this.document = new XmlDocument();
 
@@ -76,13 +88,13 @@ namespace GMDTool.Convert
             rootElement.AppendChild(this.CreateLibraryEffectsXmlElement());
             rootElement.AppendChild(this.CreateLibraryMaterialsXmlElement());
             rootElement.AppendChild(this.CreateLibraryGeometriesXmlElement());
-            rootElement.AppendChild(this.CreateLibraryControllersXmlElement(blenderMode));
+            rootElement.AppendChild(this.CreateLibraryControllersXmlElement());
             rootElement.AppendChild(this.CreateLibraryVisualScenesXmlElement());
             rootElement.AppendChild(this.CreateSceneXmlElement());
 
             this.document.AppendChild(rootElement);
 
-            if (blenderMode)
+            if (this.blenderMode)
             {
                 string directory = Path.GetDirectoryName(this.outputPath);
                 string fileName = Path.GetFileNameWithoutExtension(this.outputPath);
@@ -134,49 +146,49 @@ namespace GMDTool.Convert
 
         private XmlNode CreateLibraryImagesXmlElement()
         {
-            var libraryImagesElement = this.document.CreateElement("library_images");
+            this.libraryImagesElement = this.document.CreateElement("library_images");
 
             foreach (Material material in this.modelPack.Materials.Materials)
             {
                 if (material.Flags.HasFlag(MaterialFlags.HasDiffuseMap))
                 {
-                    libraryImagesElement.AppendChild(this.CreateImageXmlElement(material.Name, "diffuse", material.DiffuseMap));
+                    this.libraryImagesElement.AppendChild(this.CreateImageXmlElement(material.Name, "diffuse", material.DiffuseMap));
                 }
                 if (material.Flags.HasFlag(MaterialFlags.HasNormalMap))
                 {
-                    libraryImagesElement.AppendChild(this.CreateImageXmlElement(material.Name, "normal", material.NormalMap));
+                    this.libraryImagesElement.AppendChild(this.CreateImageXmlElement(material.Name, "normal", material.NormalMap));
                 }
                 if (material.Flags.HasFlag(MaterialFlags.HasSpecularMap))
                 {
-                    libraryImagesElement.AppendChild(this.CreateImageXmlElement(material.Name, "specular", material.SpecularMap));
+                    this.libraryImagesElement.AppendChild(this.CreateImageXmlElement(material.Name, "specular", material.SpecularMap));
                 }
                 if (material.Flags.HasFlag(MaterialFlags.HasReflectionMap))
                 {
-                    libraryImagesElement.AppendChild(this.CreateImageXmlElement(material.Name, "reflection", material.ReflectionMap));
+                    this.libraryImagesElement.AppendChild(this.CreateImageXmlElement(material.Name, "reflection", material.ReflectionMap));
                 }
                 if (material.Flags.HasFlag(MaterialFlags.HasHighlightMap))
                 {
-                    libraryImagesElement.AppendChild(this.CreateImageXmlElement(material.Name, "highlight", material.HighlightMap));
+                    this.libraryImagesElement.AppendChild(this.CreateImageXmlElement(material.Name, "highlight", material.HighlightMap));
                 }
                 if (material.Flags.HasFlag(MaterialFlags.HasGlowMap))
                 {
-                    libraryImagesElement.AppendChild(this.CreateImageXmlElement(material.Name, "glow", material.GlowMap));
+                    this.libraryImagesElement.AppendChild(this.CreateImageXmlElement(material.Name, "glow", material.GlowMap));
                 }
                 if (material.Flags.HasFlag(MaterialFlags.HasNightMap))
                 {
-                    libraryImagesElement.AppendChild(this.CreateImageXmlElement(material.Name, "night", material.NightMap));
+                    this.libraryImagesElement.AppendChild(this.CreateImageXmlElement(material.Name, "night", material.NightMap));
                 }
                 if (material.Flags.HasFlag(MaterialFlags.HasDetailMap))
                 {
-                    libraryImagesElement.AppendChild(this.CreateImageXmlElement(material.Name, "detail", material.DetailMap));
+                    this.libraryImagesElement.AppendChild(this.CreateImageXmlElement(material.Name, "detail", material.DetailMap));
                 }
                 if (material.Flags.HasFlag(MaterialFlags.HasShadowMap))
                 {
-                    libraryImagesElement.AppendChild(this.CreateImageXmlElement(material.Name, "shadow", material.ShadowMap));
+                    this.libraryImagesElement.AppendChild(this.CreateImageXmlElement(material.Name, "shadow", material.ShadowMap));
                 }
             }
 
-            return libraryImagesElement;
+            return this.libraryImagesElement;
         }
 
         private XmlNode CreateImageXmlElement(string materialName, string textureMapType, TextureMap textureMap)
@@ -194,14 +206,14 @@ namespace GMDTool.Convert
 
         private XmlNode CreateLibraryEffectsXmlElement()
         {
-            var libraryEffectsElement = this.document.CreateElement("library_effects");
+            this.libraryEffectsElement = this.document.CreateElement("library_effects");
 
             foreach (Material material in this.modelPack.Materials.Materials)
             {
-                libraryEffectsElement.AppendChild(this.CreateEffectXmlElement(material));
+                this.libraryEffectsElement.AppendChild(this.CreateEffectXmlElement(material));
             }
 
-            return libraryEffectsElement;
+            return this.libraryEffectsElement;
         }
 
         private XmlNode CreateEffectXmlElement(Material material)
@@ -346,7 +358,7 @@ namespace GMDTool.Convert
 
         private XmlNode CreateLibraryMaterialsXmlElement()
         {
-            var libraryMaterialsElement = this.document.CreateElement("library_materials");
+            this.libraryMaterialsElement = this.document.CreateElement("library_materials");
 
             foreach (var material in this.modelPack.Materials.Materials)
             {
@@ -359,15 +371,15 @@ namespace GMDTool.Convert
 
                 materialElement.AppendChild(instanceEffectElement);
 
-                libraryMaterialsElement.AppendChild(materialElement);
+                this.libraryMaterialsElement.AppendChild(materialElement);
             }
 
-            return libraryMaterialsElement;
+            return this.libraryMaterialsElement;
         }
 
         private XmlNode CreateLibraryGeometriesXmlElement()
         {
-            var libraryGeometriesElement = this.document.CreateElement("library_geometries");
+            this.libraryGeometriesElement = this.document.CreateElement("library_geometries");
 
             this.meshes = new List<Mesh>();
 
@@ -381,7 +393,7 @@ namespace GMDTool.Convert
                 var mesh = this.meshes[i];
                 string meshId = "meshId" + i;
 
-                libraryGeometriesElement.AppendChild(this.CreateGeometryXmlElement(mesh, null, meshId));
+                this.libraryGeometriesElement.AppendChild(this.CreateGeometryXmlElement(mesh, null, meshId));
 
                 if (mesh.Flags.HasFlag(GeometryFlags.HasMorphTargets))
                 {
@@ -396,12 +408,12 @@ namespace GMDTool.Convert
 
                         string morphTargetId = meshId + "_morphId" + j;
 
-                        libraryGeometriesElement.AppendChild(this.CreateGeometryXmlElement(mesh, morphTarget.Vertices, morphTargetId));
+                        this.libraryGeometriesElement.AppendChild(this.CreateGeometryXmlElement(mesh, morphTarget.Vertices, morphTargetId));
                     }
                 }
             }
 
-            return libraryGeometriesElement;
+            return this.libraryGeometriesElement;
         }
 
         private XmlNode CreateGeometryXmlElement(Mesh mesh, List<Vector3> vertexAdditions, string meshId)
@@ -540,13 +552,13 @@ namespace GMDTool.Convert
             return paramElement;
         }
 
-        private XmlNode CreateLibraryControllersXmlElement(bool blenderMode)
+        private XmlNode CreateLibraryControllersXmlElement()
         {
-            var libraryControllersElement = this.document.CreateElement("library_controllers");
+            this.libraryControllersElement = this.document.CreateElement("library_controllers");
 
-            if (!this.meshes.Any(x => x.Flags.HasFlag(GeometryFlags.HasVertexWeights) && x.Flags.HasFlag(GeometryFlags.HasMorphTargets)))
+            if (this.meshes.Any(x => x.Flags.HasFlag(GeometryFlags.HasVertexWeights) && x.Flags.HasFlag(GeometryFlags.HasMorphTargets)))
             {
-                this.blenderOutputNecessary = false;
+                this.blenderOutputNecessary = true;
             }
 
             for (int i = 0; i < this.meshes.Count; i++)
@@ -567,7 +579,7 @@ namespace GMDTool.Convert
 
                 var skinElement = this.document.CreateElement("skin");
 
-                if (blenderMode)
+                if (this.blenderMode)
                 {
                     // in blender, morph-targets are not per-node, they are per-mesh. this luckily provides a workaround its broken io
                     // despite not being referenced anywhere, the fact that it is attached to the mesh will make every instance of the mesh have the morph targets
@@ -722,7 +734,7 @@ namespace GMDTool.Convert
 
                 controllerElement.AppendChild(skinElement);
 
-                libraryControllersElement.AppendChild(controllerElement);
+                this.libraryControllersElement.AppendChild(controllerElement);
             }
 
             for (int i = 0; i < this.meshes.Count; i++)
@@ -763,10 +775,10 @@ namespace GMDTool.Convert
 
                 controllerElement.AppendChild(morphElement);
 
-                libraryControllersElement.AppendChild(controllerElement);
+                this.libraryControllersElement.AppendChild(controllerElement);
             }
 
-            return libraryControllersElement;
+            return this.libraryControllersElement;
         }
 
         private XmlNode CreateSkinJointsSourceXmlElement(Mesh mesh, string meshId, out List<Node> joints)
@@ -912,7 +924,7 @@ namespace GMDTool.Convert
 
             for (int i = 0; i < bones.Count; ++i)
             {
-                for (int j = 0; j < bones[i].VertexWeights.Count; ++j)
+                for (int j = 0; j < bones[i].VertexWeights.Count; j++)
                 {
                     floatArrayElementValues.Add(bones[i].VertexWeights[j].Weight);
                 }
@@ -920,7 +932,6 @@ namespace GMDTool.Convert
 
             floatArrayElement.SetAttribute("count", floatArrayElementValues.Count.ToString());
             floatArrayElement.AppendChild(this.document.CreateTextNode(String.Join(" ", floatArrayElementValues)));
-            // TODO: these values don't seem to match assimp output?
 
             sourceElement.AppendChild(floatArrayElement);
 
@@ -1035,13 +1046,13 @@ namespace GMDTool.Convert
         {
             var libraryVisualScenesElement = this.document.CreateElement("library_visual_scenes");
 
-            var visualSceneElement = this.document.CreateElement("visual_scene");
-            visualSceneElement.SetAttribute("id", "RootNode");
-            visualSceneElement.SetAttribute("name", "RootNode");
+            this.visualSceneElement = this.document.CreateElement("visual_scene");
+            this.visualSceneElement.SetAttribute("id", "RootNode");
+            this.visualSceneElement.SetAttribute("name", "RootNode");
 
-            this.RecurseNodeChildren(visualSceneElement, this.modelPack.Model.RootNode);
+            this.RecurseNodeChildren(this.visualSceneElement, this.modelPack.Model.RootNode);
 
-            libraryVisualScenesElement.AppendChild(visualSceneElement);
+            libraryVisualScenesElement.AppendChild(this.visualSceneElement);
 
             return libraryVisualScenesElement;
         }
@@ -1049,6 +1060,19 @@ namespace GMDTool.Convert
         private void RecurseNodeChildren(XmlElement parentElement, Node parent)
         {
             var bones = this.modelPack.Model.Bones;
+
+            Bone parentNodeBone = null;
+            if (bones != null)
+            {
+                foreach (var bone in bones)
+                {
+                    if (parent == this.modelPack.Model.GetNode(bone.NodeIndex))
+                    {
+                        parentNodeBone = bone;
+                        break;
+                    }
+                }
+            }
 
             foreach (var node in parent.Children)
             {
@@ -1092,6 +1116,8 @@ namespace GMDTool.Convert
 
                 nodeElement.AppendChild(matrixElement);
 
+                bool skipNode = false;
+
                 for (int i = 0; i < node.Attachments.Count; i++)
                 {
                     var attachment = node.Attachments[i];
@@ -1100,6 +1126,22 @@ namespace GMDTool.Convert
                     {
                         case NodeAttachmentType.Mesh:
                             var mesh = attachment.GetValue<Mesh>();
+
+                            if (parentNodeBone != null)
+                            {
+                                // uh oh! a mesh is attached to a joint.
+                                // blender doesn't like this, so we'll have to do some tomfoolery to place it elsewhere while still having it be affected
+                                this.blenderOutputNecessary = true;
+
+                                if (this.blenderMode)
+                                {
+                                    this.HandleJointMeshAttachment(mesh, parent);
+                                    skipNode = true;
+                                    // we'll assume that there are no other attachments. please. 
+                                    break;
+                                }
+                            }
+
                             if (mesh.Flags.HasFlag(GeometryFlags.HasMorphTargets) || mesh.Flags.HasFlag(GeometryFlags.HasVertexWeights))
                             {
                                 nodeElement.AppendChild(this.CreateInstanceControllerXmlElement(mesh));
@@ -1119,39 +1161,149 @@ namespace GMDTool.Convert
                     }
                 }
 
-                this.RecurseNodeChildren(nodeElement, node);
 
-                parentElement.AppendChild(nodeElement);
+                if (!skipNode)
+                {
+                    this.RecurseNodeChildren(nodeElement, node);
+
+                    parentElement.AppendChild(nodeElement);
+                }
             }
         }
 
-        private XmlNode CreateInstanceControllerXmlElement(Mesh mesh)
+        private void HandleJointMeshAttachment(Mesh mesh, Node parentBoneNode)
         {
-            int meshIndex = this.meshes.IndexOf(mesh);
-            string meshId = "meshId" + meshIndex;
+            // i am going to make two assumptions here.
+            // the first is that the mesh does not have vertex weights. if it does, then why would it be here...?
+
+            if (mesh.Flags.HasFlag(GeometryFlags.HasVertexWeights))
+            {
+                throw new ApplicationException("A joint mesh attachment has vertex weights.");
+            }
+
+            // the second is that the mesh does not have morph targets. if it does, i will literally vape my own brain.
+
+            if (mesh.Flags.HasFlag(GeometryFlags.HasMorphTargets))
+            {
+                throw new ApplicationException("A joint mesh attachment has morph targets. See, Poyo, you idiot? You thought this would never happen and it did. You absolute buffoon.");
+            }
+
+            string meshId = null;
+            for (int i = 0; i < this.meshes.Count; i++)
+            {
+                if (mesh == this.meshes[i])
+                {
+                    meshId = "meshId" + i;
+                }
+            }
+
+            if (meshId == null)
+            {
+                throw new ApplicationException("Joint mesh attachment is somehow not in the list of meshes!!! What in tarnation!!!");
+            }
+
+            // first create a controller
+
+            var controllerElement = this.document.CreateElement("controller");
+            controllerElement.SetAttribute("id", meshId + "-skin");
+            controllerElement.SetAttribute("name", meshId + "-skin");
+
+            var skinElement = this.document.CreateElement("skin");
+
+            skinElement.SetAttribute("source", "#" + meshId);
+
+            var bindShapeMatrixElement = this.document.CreateElement("bind_shape_matrix");
+            bindShapeMatrixElement.AppendChild(this.document.CreateTextNode(this.GenerateMatrixString(Matrix4x4.Identity)));
+
+            skinElement.AppendChild(bindShapeMatrixElement);
+
+            var meshNode = this.modelPack.Model.Nodes.First(x => x.Meshes.Contains(mesh));
+
+            skinElement.AppendChild(this.CreateJointMeshAttachmentSkinJointsSourceXmlElement(parentBoneNode, meshId));
+            skinElement.AppendChild(this.CreateJointMeshAttachmentSkinBindPosesSourceXmlElement(parentBoneNode, meshNode, meshId));
+            skinElement.AppendChild(this.CreateJointMeshAttachmentSkinWeightsSourceXmlElement(mesh, meshId));
+
+            var jointsElement = this.document.CreateElement("joints");
+
+            var inputJointsJointElement = this.document.CreateElement("input");
+            inputJointsJointElement.SetAttribute("semantic", "JOINT");
+            inputJointsJointElement.SetAttribute("source", "#" + meshId + "-skin-joints");
+
+            jointsElement.AppendChild(inputJointsJointElement);
+
+            var inputJointsInvBindMatrixElement = this.document.CreateElement("input");
+            inputJointsInvBindMatrixElement.SetAttribute("semantic", "INV_BIND_MATRIX");
+            inputJointsInvBindMatrixElement.SetAttribute("source", "#" + meshId + "-skin-bind-poses");
+
+            jointsElement.AppendChild(inputJointsInvBindMatrixElement);
+
+            skinElement.AppendChild(jointsElement);
+
+            var vertexWeightsElement = this.document.CreateElement("vertex_weights");
+            vertexWeightsElement.SetAttribute("count", mesh.VertexCount.ToString());
+
+            var inputVertexWeightsJointElement = this.document.CreateElement("input");
+            inputVertexWeightsJointElement.SetAttribute("semantic", "JOINT");
+            inputVertexWeightsJointElement.SetAttribute("source", "#" + meshId + "-skin-joints");
+            inputVertexWeightsJointElement.SetAttribute("offset", "0");
+
+            vertexWeightsElement.AppendChild(inputVertexWeightsJointElement);
+
+            var inputVertexWeightsWeightElement = this.document.CreateElement("input");
+            inputVertexWeightsWeightElement.SetAttribute("semantic", "WEIGHT");
+            inputVertexWeightsWeightElement.SetAttribute("source", "#" + meshId + "-skin-weights");
+            inputVertexWeightsWeightElement.SetAttribute("offset", "1");
+
+            vertexWeightsElement.AppendChild(inputVertexWeightsWeightElement);
+
+            var vcountElement = this.document.CreateElement("vcount");
+            vcountElement.AppendChild(this.document.CreateTextNode(String.Join(" ", Enumerable.Repeat(1, mesh.VertexCount))));
+
+            vertexWeightsElement.AppendChild(vcountElement);
+
+            var vElement = this.document.CreateElement("v");
+
+            var vElementValues = new List<int>();
+
+            for (int i = 0; i < mesh.VertexCount; i++)
+            {
+                vElementValues.Add(0); // bone[0];
+                vElementValues.Add(i); // weight[i]
+            }
+
+            vElement.AppendChild(this.document.CreateTextNode(String.Join(" ", vElementValues)));
+
+            vertexWeightsElement.AppendChild(vElement);
+
+            skinElement.AppendChild(vertexWeightsElement);
+
+            controllerElement.AppendChild(skinElement);
+
+            this.libraryControllersElement.AppendChild(controllerElement);
+
+            // now we instantiate the controller in the scene manually.
+
+            var nodeElement = this.document.CreateElement("node");
+            nodeElement.SetAttribute("id", parentBoneNode.Name);
+            nodeElement.SetAttribute("sid", parentBoneNode.Name);
+            nodeElement.SetAttribute("name", parentBoneNode.Name);
+
+            nodeElement.SetAttribute("type", "NODE");
+
+            var matrixElement = this.document.CreateElement("matrix");
+            matrixElement.SetAttribute("sid", "matrix");
+
+            matrixElement.AppendChild(this.document.CreateTextNode(this.GenerateMatrixString(parentBoneNode.LocalTransform)));
+
+            nodeElement.AppendChild(matrixElement);
 
             var instanceController = this.document.CreateElement("instance_controller");
-            if (mesh.Flags.HasFlag(GeometryFlags.HasVertexWeights))
-            {
-                instanceController.SetAttribute("url", "#" + meshId + "-skin");
-            }
-            else if (mesh.Flags.HasFlag(GeometryFlags.HasMorphTargets))
-            {
-                instanceController.SetAttribute("url", "#" + meshId + "-morph");
-            }
-            else
-            {
-                // should never happen
-                throw new ApplicationException("CreateInstanceControllerXmlElement was called for a mesh that has neither vertex weights nor morph targets.");
-            }
+            instanceController.SetAttribute("url", "#" + meshId + "-skin");
 
-            if (mesh.Flags.HasFlag(GeometryFlags.HasVertexWeights))
-            {
-                var skeletonElement = this.document.CreateElement("skeleton");
-                skeletonElement.AppendChild(this.document.CreateTextNode("#root")); // more like doot haha
+            var skeletonElement = this.document.CreateElement("skeleton");
+            skeletonElement.AppendChild(this.document.CreateTextNode("#root"));
 
-                instanceController.AppendChild(skeletonElement);
-            }
+            instanceController.AppendChild(skeletonElement);
 
             var bindMaterialElement = this.document.CreateElement("bind_material");
 
@@ -1177,7 +1329,167 @@ namespace GMDTool.Convert
 
             instanceController.AppendChild(bindMaterialElement);
 
-            return instanceController;
+            nodeElement.AppendChild(instanceController);
+
+            this.visualSceneElement.AppendChild(nodeElement);
+        }
+
+        private XmlNode CreateJointMeshAttachmentSkinJointsSourceXmlElement(Node parentBoneNode, string meshId)
+        {
+            var sourceElement = this.document.CreateElement("source");
+            sourceElement.SetAttribute("id", meshId + "-skin-joints");
+            sourceElement.SetAttribute("name", meshId + "-skin-joints");
+
+            var nameArrayElement = this.document.CreateElement("Name_array");
+            nameArrayElement.SetAttribute("id", meshId + "-skin-joints-array");
+            nameArrayElement.SetAttribute("count", "1");
+            nameArrayElement.AppendChild(this.document.CreateTextNode(parentBoneNode.Name));
+
+            sourceElement.AppendChild(nameArrayElement);
+
+            var techniqueCommonElement = this.document.CreateElement("technique_common");
+
+            var accessorElement = this.document.CreateElement("accessor");
+            accessorElement.SetAttribute("source", "#" + meshId + "-skin-joints-array");
+            accessorElement.SetAttribute("count", "1");
+            accessorElement.SetAttribute("stride", "1");
+
+            var paramElement = this.document.CreateElement("param");
+            paramElement.SetAttribute("name", "JOINT");
+            paramElement.SetAttribute("type", "Name");
+
+            techniqueCommonElement.AppendChild(accessorElement);
+
+            accessorElement.AppendChild(paramElement);
+
+            sourceElement.AppendChild(techniqueCommonElement);
+            return sourceElement;
+        }
+
+        private XmlNode CreateJointMeshAttachmentSkinBindPosesSourceXmlElement(Node parentBoneNode, Node meshNode, string meshId)
+        {
+            var sourceElement = this.document.CreateElement("source");
+            sourceElement.SetAttribute("id", meshId + "-skin-bind-poses");
+            sourceElement.SetAttribute("name", meshId + "-skin-bind-poses");
+
+            var floatArrayElement = this.document.CreateElement("float_array");
+            floatArrayElement.SetAttribute("id", meshId + "-skin-bind-poses-array");
+            floatArrayElement.SetAttribute("count", "16");
+
+            Matrix4x4.Invert(meshNode.WorldTransform, out Matrix4x4 invertedMeshNodeWorldTransform);
+            Matrix4x4.Invert(parentBoneNode.WorldTransform * invertedMeshNodeWorldTransform, out Matrix4x4 offsetMatrix);
+            floatArrayElement.AppendChild(this.document.CreateTextNode(this.GenerateMatrixString(offsetMatrix)));
+
+            sourceElement.AppendChild(floatArrayElement);
+
+            var techniqueCommonElement = this.document.CreateElement("technique_common");
+
+            var accessorElement = this.document.CreateElement("accessor");
+            accessorElement.SetAttribute("count", "1");
+            accessorElement.SetAttribute("offset", "0");
+            accessorElement.SetAttribute("source", "#" + meshId + "-skin-bind-poses-array");
+            accessorElement.SetAttribute("stride", "16");
+
+            var paramElement = this.document.CreateElement("param");
+            paramElement.SetAttribute("name", "TRANSFORM");
+            paramElement.SetAttribute("type", "float4x4");
+
+            accessorElement.AppendChild(paramElement);
+
+            techniqueCommonElement.AppendChild(accessorElement);
+
+            sourceElement.AppendChild(techniqueCommonElement);
+            return sourceElement;
+        }
+
+        private XmlNode CreateJointMeshAttachmentSkinWeightsSourceXmlElement(Mesh mesh, string meshId)
+        {
+
+            var sourceElement = this.document.CreateElement("source");
+            sourceElement.SetAttribute("id", meshId + "-skin-weights");
+            sourceElement.SetAttribute("name", meshId + "-skin-weights");
+
+            var floatArrayElement = this.document.CreateElement("float_array");
+            floatArrayElement.SetAttribute("id", meshId + "-skin-weights-array");
+            floatArrayElement.SetAttribute("count", mesh.VertexCount.ToString());
+
+            floatArrayElement.AppendChild(this.document.CreateTextNode(String.Join(" ", Enumerable.Repeat(1, mesh.VertexCount))));
+
+            sourceElement.AppendChild(floatArrayElement);
+
+            var techniqueCommonElement = this.document.CreateElement("technique_common");
+
+            var accessorElement = this.document.CreateElement("accessor");
+            accessorElement.SetAttribute("count", mesh.VertexCount.ToString());
+            accessorElement.SetAttribute("offset", "0");
+            accessorElement.SetAttribute("source", "#" + meshId + "-skin-weights-array");
+            accessorElement.SetAttribute("stride", "1");
+
+            techniqueCommonElement.AppendChild(accessorElement);
+
+            var paramElement = this.document.CreateElement("param");
+            paramElement.SetAttribute("name", "WEIGHT");
+            paramElement.SetAttribute("type", "float");
+
+            accessorElement.AppendChild(paramElement);
+
+            sourceElement.AppendChild(techniqueCommonElement);
+            return sourceElement;
+        }
+
+        private XmlNode CreateInstanceControllerXmlElement(Mesh mesh)
+        {
+            int meshIndex = this.meshes.IndexOf(mesh);
+            string meshId = "meshId" + meshIndex;
+
+            var instanceControllerElement = this.document.CreateElement("instance_controller");
+            if (mesh.Flags.HasFlag(GeometryFlags.HasVertexWeights))
+            {
+                instanceControllerElement.SetAttribute("url", "#" + meshId + "-skin");
+            }
+            else if (mesh.Flags.HasFlag(GeometryFlags.HasMorphTargets))
+            {
+                instanceControllerElement.SetAttribute("url", "#" + meshId + "-morph");
+            }
+            else
+            {
+                // should never happen
+                throw new ApplicationException("CreateInstanceControllerXmlElement was called for a mesh that has neither vertex weights nor morph targets.");
+            }
+
+            if (mesh.Flags.HasFlag(GeometryFlags.HasVertexWeights))
+            {
+                var skeletonElement = this.document.CreateElement("skeleton");
+                skeletonElement.AppendChild(this.document.CreateTextNode("#root")); // more like doot haha
+
+                instanceControllerElement.AppendChild(skeletonElement);
+            }
+
+            var bindMaterialElement = this.document.CreateElement("bind_material");
+
+            var techniqueCommonElement = this.document.CreateElement("technique_common");
+
+            var instanceMaterialElement = this.document.CreateElement("instance_material");
+            instanceMaterialElement.SetAttribute("symbol", "defaultMaterial");
+            instanceMaterialElement.SetAttribute("target", "#" + mesh.MaterialName);
+
+            if (mesh.TexCoordsChannel0 != null)
+            {
+                var bindVertexInputElement = this.document.CreateElement("bind_vertex_input");
+                bindVertexInputElement.SetAttribute("semantic", "CHANNEL0");
+                bindVertexInputElement.SetAttribute("input_semantic", "TEXCOORD");
+                bindVertexInputElement.SetAttribute("input_set", "0");
+
+                instanceMaterialElement.AppendChild(bindVertexInputElement);
+            }
+
+            techniqueCommonElement.AppendChild(instanceMaterialElement);
+
+            bindMaterialElement.AppendChild(techniqueCommonElement);
+
+            instanceControllerElement.AppendChild(bindMaterialElement);
+
+            return instanceControllerElement;
         }
 
         private XmlNode CreateInstanceGeometryXmlElement(Mesh mesh)
