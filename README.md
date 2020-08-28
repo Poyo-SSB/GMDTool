@@ -51,3 +51,5 @@ Currently unsupported elements of GMD files include:
  - Lights
  - Cameras
  - Animations
+
+Blender compatibility has not yet been implemented for models which contain meshes influenced by multiple armatures.
