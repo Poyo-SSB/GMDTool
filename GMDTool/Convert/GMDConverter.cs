@@ -1135,7 +1135,7 @@ namespace GMDTool.Convert
 
                                 if (this.blenderMode)
                                 {
-                                    this.HandleJointMeshAttachment(mesh, node);
+                                    this.HandleJointMeshAttachment(mesh, parent, node);
                                     skipNode = true;
                                     // we'll assume that there are no other attachments. please. 
                                     break;
@@ -1171,7 +1171,7 @@ namespace GMDTool.Convert
             }
         }
 
-        private void HandleJointMeshAttachment(Mesh mesh, Node node)
+        private void HandleJointMeshAttachment(Mesh mesh, Node parent, Node node)
         {
             // i am going to make two assumptions here.
             // the first is that the mesh does not have vertex weights. if it does, then why would it be here...?
@@ -1219,7 +1219,7 @@ namespace GMDTool.Convert
 
             var meshNode = this.modelPack.Model.Nodes.First(x => x.Meshes.Contains(mesh));
 
-            skinElement.AppendChild(this.CreateJointMeshAttachmentSkinJointsSourceXmlElement(node, meshId));
+            skinElement.AppendChild(this.CreateJointMeshAttachmentSkinJointsSourceXmlElement(parent, meshId));
             skinElement.AppendChild(this.CreateJointMeshAttachmentSkinBindPosesSourceXmlElement(node, meshNode, meshId));
             skinElement.AppendChild(this.CreateJointMeshAttachmentSkinWeightsSourceXmlElement(mesh, meshId));
 
