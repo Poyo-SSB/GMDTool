@@ -1135,7 +1135,7 @@ namespace GMDTool.Convert
 
                                 if (this.blenderMode)
                                 {
-                                    this.HandleJointMeshAttachment(mesh, parent);
+                                    this.HandleJointMeshAttachment(mesh, parent, node);
                                     skipNode = true;
                                     // we'll assume that there are no other attachments. please. 
                                     break;
@@ -1171,7 +1171,7 @@ namespace GMDTool.Convert
             }
         }
 
-        private void HandleJointMeshAttachment(Mesh mesh, Node parentBoneNode)
+        private void HandleJointMeshAttachment(Mesh mesh, Node parent, Node node)
         {
             // i am going to make two assumptions here.
             // the first is that the mesh does not have vertex weights. if it does, then why would it be here...?
@@ -1213,14 +1213,14 @@ namespace GMDTool.Convert
             skinElement.SetAttribute("source", "#" + meshId);
 
             var bindShapeMatrixElement = this.document.CreateElement("bind_shape_matrix");
-            bindShapeMatrixElement.AppendChild(this.document.CreateTextNode(this.GenerateMatrixString(Matrix4x4.Identity)));
+            bindShapeMatrixElement.AppendChild(this.document.CreateTextNode(this.GenerateMatrixString(node.WorldTransform)));
 
             skinElement.AppendChild(bindShapeMatrixElement);
 
             var meshNode = this.modelPack.Model.Nodes.First(x => x.Meshes.Contains(mesh));
 
-            skinElement.AppendChild(this.CreateJointMeshAttachmentSkinJointsSourceXmlElement(parentBoneNode, meshId));
-            skinElement.AppendChild(this.CreateJointMeshAttachmentSkinBindPosesSourceXmlElement(parentBoneNode, meshNode, meshId));
+            skinElement.AppendChild(this.CreateJointMeshAttachmentSkinJointsSourceXmlElement(parent, meshId));
+            skinElement.AppendChild(this.CreateJointMeshAttachmentSkinBindPosesSourceXmlElement(node, meshNode, meshId));
             skinElement.AppendChild(this.CreateJointMeshAttachmentSkinWeightsSourceXmlElement(mesh, meshId));
 
             var jointsElement = this.document.CreateElement("joints");
@@ -1284,16 +1284,16 @@ namespace GMDTool.Convert
             // now we instantiate the controller in the scene manually.
 
             var nodeElement = this.document.CreateElement("node");
-            nodeElement.SetAttribute("id", parentBoneNode.Name);
-            nodeElement.SetAttribute("sid", parentBoneNode.Name);
-            nodeElement.SetAttribute("name", parentBoneNode.Name);
+            nodeElement.SetAttribute("id", node.Name);
+            nodeElement.SetAttribute("sid", node.Name);
+            nodeElement.SetAttribute("name", node.Name);
 
             nodeElement.SetAttribute("type", "NODE");
 
             var matrixElement = this.document.CreateElement("matrix");
             matrixElement.SetAttribute("sid", "matrix");
 
-            matrixElement.AppendChild(this.document.CreateTextNode(this.GenerateMatrixString(parentBoneNode.LocalTransform)));
+            matrixElement.AppendChild(this.document.CreateTextNode(this.GenerateMatrixString(node.LocalTransform)));
 
             nodeElement.AppendChild(matrixElement);
 
