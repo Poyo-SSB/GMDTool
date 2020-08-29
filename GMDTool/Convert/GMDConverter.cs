@@ -197,7 +197,7 @@ namespace GMDTool.Convert
             imageElement.SetAttribute("id", materialName + "-" + textureMapType + "-image");
 
             var initFromElement = this.document.CreateElement("init_from");
-            initFromElement.AppendChild(this.document.CreateTextNode(Path.Combine(this.textureFolderName, textureMap.Name)));
+            initFromElement.AppendChild(this.document.CreateTextNode(Path.Combine(this.textureFolderName, this.SanitizeFilename(textureMap.Name))));
 
             imageElement.AppendChild(initFromElement);
 
@@ -1545,9 +1545,12 @@ namespace GMDTool.Convert
 
             foreach (Texture texture in this.modelPack.Textures.Textures)
             {
-                File.WriteAllBytes(Path.Combine(this.textureFolder, texture.Name), texture.Data);
+                File.WriteAllBytes(Path.Combine(this.textureFolder, this.SanitizeFilename(texture.Name)), texture.Data);
             }
         }
+
+        private string SanitizeFilename(string input)
+            => input.Replace(" ", "-");
 
         private string GenerateMatrixString(Matrix4x4 matrix)
         {
