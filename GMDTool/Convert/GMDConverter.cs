@@ -393,7 +393,9 @@ namespace GMDTool.Convert
                 var mesh = this.meshes[i];
                 string meshId = "meshId" + i;
 
-                this.libraryGeometriesElement.AppendChild(this.CreateGeometryXmlElement(mesh, null, meshId));
+                var meshNode = this.modelPack.Model.Nodes.First(x => x.Meshes.Contains(mesh)); // this is very crusty.
+
+                this.libraryGeometriesElement.AppendChild(this.CreateGeometryXmlElement(mesh, meshNode, null, meshId));
 
                 if (mesh.Flags.HasFlag(GeometryFlags.HasMorphTargets))
                 {
@@ -408,7 +410,7 @@ namespace GMDTool.Convert
 
                         string morphTargetId = meshId + "_morphId" + j;
 
-                        this.libraryGeometriesElement.AppendChild(this.CreateGeometryXmlElement(mesh, morphTarget.Vertices, morphTargetId));
+                        this.libraryGeometriesElement.AppendChild(this.CreateGeometryXmlElement(mesh, meshNode, morphTarget.Vertices, morphTargetId));
                     }
                 }
             }
@@ -416,7 +418,7 @@ namespace GMDTool.Convert
             return this.libraryGeometriesElement;
         }
 
-        private XmlNode CreateGeometryXmlElement(Mesh mesh, List<Vector3> vertexAdditions, string meshId)
+        private XmlNode CreateGeometryXmlElement(Mesh mesh, Node meshNode, List<Vector3> vertexAdditions, string meshId)
         {
             var geometryElement = this.document.CreateElement("geometry");
             geometryElement.SetAttribute("id", meshId);
@@ -424,7 +426,15 @@ namespace GMDTool.Convert
 
             var meshElement = this.document.CreateElement("mesh");
 
-            float[] meshValues = mesh.Vertices.Select(x => new float[] { x.X, x.Y, x.Z }).SelectMany(x => x).ToArray();
+            var vertices = mesh.Vertices;
+            var normals = mesh.Normals;
+
+            if (mesh.VertexWeights != null)
+            {
+                (vertices, normals) = mesh.Transform(meshNode, this.modelPack.Model.Nodes.ToList(), this.modelPack.Model.Bones);
+            }
+
+            float[] meshValues = vertices.Select(x => new float[] { x.X, x.Y, x.Z }).SelectMany(x => x).ToArray();
 
             if (vertexAdditions != null)
             {
@@ -438,7 +448,7 @@ namespace GMDTool.Convert
 
             meshElement.AppendChild(this.CreateSourceFloatArrayElement(meshId, "positions", meshValues, 3));
 
-            var normalsValue = mesh.Normals.Select(x => new float[] { x.X, x.Y, x.Z }).SelectMany(x => x);
+            var normalsValue = normals.Select(x => new float[] { x.X, x.Y, x.Z }).SelectMany(x => x);
             meshElement.AppendChild(this.CreateSourceFloatArrayElement(meshId, "normals", normalsValue, 3));
 
             if (mesh.TexCoordsChannel0 != null)
@@ -566,7 +576,7 @@ namespace GMDTool.Convert
                 var mesh = this.meshes[i];
                 string meshId = "meshId" + i;
 
-                var meshNode = this.modelPack.Model.Nodes.First(x => x.Meshes.Contains(mesh)); // this is very crusty.
+                var meshNode = this.modelPack.Model.Nodes.First(x => x.Meshes.Contains(mesh));
 
                 if (!mesh.Flags.HasFlag(GeometryFlags.HasVertexWeights))
                 {
