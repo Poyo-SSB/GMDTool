@@ -316,7 +316,15 @@ namespace GMDTool.Convert
         {
             var colorElement = this.document.CreateElement("color");
             colorElement.SetAttribute("sid", scopedId);
-            colorElement.AppendChild(this.document.CreateTextNode($"{color.X} {color.Y} {color.Z} {color.W}"));
+            if (scopedId == "emission" && (color.W == 0 || color.W > 1))
+            {
+                // horrible hack
+                colorElement.AppendChild(this.document.CreateTextNode($"0 0 0 1"));
+            }
+            else
+            {
+                colorElement.AppendChild(this.document.CreateTextNode($"{color.X} {color.Y} {color.Z} {color.W}"));
+            }
 
             return colorElement;
         }
